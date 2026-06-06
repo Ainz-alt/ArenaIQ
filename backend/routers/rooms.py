@@ -5,6 +5,8 @@ from models import Room, RoomPlayer, User
 from auth import get_current_user
 import random
 import string
+from question_generator import generate_questions
+from models import Question
 
 router = APIRouter(prefix="/api/v1/rooms", tags=["rooms"])
 
@@ -56,6 +58,40 @@ async def join_room(
     db.add(player)
     db.commit()
     return {"message": f"Joined room {code}", "status": room.status}
+
+
+@router.get("/")
+async def get_all_rooms(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    rooms = db.query(Room).all()
+    return rooms
+
+
+@router.post("/{code}/load-questions")
+async def load_questions(
+    code: str,
+    game_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    room = db.query(Room).filter(Room.code == code).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    if room.host_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only host can load questions")
+
+    questions = generate_questions(game_name)
+    for q in questions:
+        question = Question(
+            category=game_name,
+            text=q["text"],
+            options=q["options"],
+            correct_index=q["correct_index"],
+        )
+        db.add(question)
+    db.commit()
+    return {"message": f"Loaded {len(questions)} questions for {game_name}"}
 
 
 @router.get("/{code}")
