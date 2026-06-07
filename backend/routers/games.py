@@ -44,7 +44,13 @@ async def websocket_endpoint(
                     continue
                 room.status = "active"
                 db.commit()
-                questions = db.query(Question).all()
+                game_name = data.get("game_name", "")
+                if game_name:
+                    questions = (
+                        db.query(Question).filter(Question.category == game_name).all()
+                    )
+                else:
+                    questions = db.query(Question).all()
                 if not questions:
                     await manager.send_personal(
                         websocket, {"type": "error", "message": "No questions yet"}

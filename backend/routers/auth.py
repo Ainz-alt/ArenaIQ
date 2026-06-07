@@ -32,5 +32,5 @@ async def login(
     db_user = db.query(User).filter(User.email == form_data.username).first()
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_token({"sub": str(db_user.id)})
+    token = create_token({"sub": str(db_user.id), "username": db_user.username})
     return {"access_token": token, "token_type": "bearer"}

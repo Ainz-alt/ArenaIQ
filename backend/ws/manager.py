@@ -14,17 +14,27 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket, room_code: str):
         if room_code in self.rooms:
-            self.rooms[room_code].remove(websocket)
+            if websocket in self.rooms[room_code]:
+                self.rooms[room_code].remove(websocket)
             if not self.rooms[room_code]:
                 del self.rooms[room_code]
 
     async def broadcast(self, room_code: str, message: dict):
         if room_code in self.rooms:
+            dead = []
             for connection in self.rooms[room_code]:
-                await connection.send_json(message)
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    dead.append(connection)
+            for conn in dead:
+                self.rooms[room_code].remove(conn)
 
     async def send_personal(self, websocket: WebSocket, message: dict):
-        await websocket.send_json(message)
+        try:
+            await websocket.send_json(message)
+        except Exception:
+            pass
 
 
 manager = ConnectionManager()
